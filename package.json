@@ -105,6 +105,11 @@
 				"title": "Add Active File to Context",
 				"category": "Cline",
 				"icon": "$(file)"
+			},
+			{
+				"command": "cline.kebabButtonClicked",
+				"title": "Flow options",
+				"icon": "$(kebab-vertical)"
 			}
 		],
 		"menus": {
@@ -137,6 +142,11 @@
 				{
 					"command": "cline.addActiveToContext",
 					"group": "navigation@6",
+					"when": "view == claude-dev.SidebarProvider"
+				},
+				{
+					"command": "cline.kebabButtonClicked",
+					"group": "navigation@7",
 					"when": "view == claude-dev.SidebarProvider"
 				}
 			],

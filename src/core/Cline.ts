@@ -49,6 +49,8 @@ import { ClineProvider, GlobalFileNames } from "./webview/ClineProvider"
 import { detectCodeOmission } from "../integrations/editor/detect-omission"
 import { BrowserSession } from "../services/browser/BrowserSession"
 
+const ratePerMinute = 5
+
 const cwd =
 	vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
 
@@ -90,6 +92,8 @@ export class Cline {
 	private didRejectTool = false
 	private didAlreadyUseTool = false
 	private didCompleteReadingStream = false
+
+	private static requestTimestamps: number[] = []
 
 	constructor(
 		provider: ClineProvider,
@@ -754,6 +758,26 @@ export class Cline {
 	}
 
 	async *attemptApiRequest(previousApiReqIndex: number): ApiStream {
+		// Clean up timestamps older than 1 minute
+		const now = Date.now()
+		Cline.requestTimestamps = Cline.requestTimestamps.filter((ts) => now - ts < 60000)
+
+		// Check if we've hit the rate limit
+		if (Cline.requestTimestamps.length >= ratePerMinute) {
+			const oldestTimestamp = Cline.requestTimestamps[0]
+			const waitTime = Math.max(0, 60000 - (now - oldestTimestamp))
+
+			if (waitTime > 0) {
+				await this.say(
+					"text",
+					"Waiting for rate limit...",)
+				await delay(waitTime)
+			}
+		}
+
+		// Add current timestamp
+		Cline.requestTimestamps.push(now)
+
 		const systemPrompt = await SYSTEM_PROMPT(cwd, this.api.getModel().info.supportsComputerUse ?? false, this.diffStrategy) + await addCustomInstructions(this.customInstructions ?? '', cwd)
 
 		// If the previous API request's total token usage is close to the context window, truncate the conversation history to free up space for the new request
